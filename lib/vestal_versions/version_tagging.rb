@@ -16,9 +16,7 @@ module VestalVersions
     # be built to house the given tag if the parent object's current version number is 1.
     def tag_version(tag)
       v = versions.at(version) || versions.build(:number => 1)
-      t = v.tag!(tag)
-      versions.reload
-      t
+      v.tag!(tag)
     end
   end
 
