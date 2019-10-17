@@ -14,4 +14,4 @@ RUN mkdir -p $HOME/app
 ADD --chown=builder:builder . $HOME/app/
 WORKDIR $HOME/app/
 
-RUN gem install bundler -v 1.9.3-p551 && bundle install
+RUN gem install bundler -v 2.0.1 && bundle install
