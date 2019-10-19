@@ -1,9 +1,14 @@
 @Library('sharedlib') _
+import src.dataxu.docker.general.*
 
-def dockerImage = "${JOB_NAME}-builder".toLowerCase()
+def gemname = 'auth0'
+def gemspec = 'auth0.gemspec'
+def region = 'us-east-1'
 
-// define the objects that will be needed
-def general_utils = new dataxu.general.utils()
+def dockerImg = "${JOB_NAME}-builder".toLowerCase()
+def general_docker = new dataxu.docker.general(this)
+def ruby_utils = new dataxu.ruby.utils()
+
 
 //Syntax quick guide: https://jenkins.io/doc/book/pipeline/syntax/
 pipeline {
@@ -21,53 +26,12 @@ pipeline {
     }
     //begin stage definitions
     stages {
-        stage('Prep Env') {
-            stages {
-                stage ('Checkout SCM') {
-                    steps {
-                        //clean the current directory
-                        deleteDir()
-                        //get the repository this Jenkinsfile lives in
-                        checkout scm
-                    }
-                }
-            }
-            post {
-                always {
-                    //notify github that we made it this far
-                    github_notify_status()
-                }
-            }
-        }
-        stage('Build') {
-
-            stages {
-                stage('Build Docker Image') {
-                    steps {
-                        sh """
-                        docker build -t ${dockerImage} .
-                        """
-                    }
-                }
-                /* // Testing is failing. Skip to unblock project to
-                // build gems for all ui dependencies.
-                stage('Run Tests') {
-                    steps {
-                        sh """
-                        docker run ${dockerImage} bundler exec rake
-                        """
-                    }
-                }*/
-                stage('Build & Push Gem') {
-                    when {
-                        expression { env.BRANCH_NAME == 'master' }
-                    }
-                    steps {
-                        sh """
-                        docker run ${dockerImage} ./buildDeploy.sh
-                        """
-                    }
-                }
+        stage ('Checkout SCM') {
+            steps {
+                //clean the current directory
+                deleteDir()
+                //get the repository this Jenkinsfile lives in
+                checkout scm
             }
             post {
                 always {
@@ -75,21 +39,60 @@ pipeline {
                 }
             }
         }
-        stage('Cleanup') {
-            stages {
-                stage('Cleanup Docker Image') {
-                    steps {
-                        sh """
-                        docker rmi ${dockerImage}
-                        """
-                    }
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    ruby_utils.write_push_script(
+                        gemname: gemname,
+                        region: region,
+                        filepath: "${env.WORKSPACE}/push.sh"
+                    )
                 }
+                sh """
+                   chmod +x ${env.WORKSPACE}/push.sh
+                   docker build -t ${dockerImg} .
+                   """
+            }
+            post {
+                always {
+                    github_notify_status()
+                }       
+            }
+        }
+        /* // Testing is failing. Skip to unblock project to
+        // build gems for all ui dependencies.
+        stage('Run Tests') {
+            steps {
+                sh """
+                   docker run ${dockerImg} bundler exec rake
+                   """
+            }
+            post {
+                always {
+                    github_notify_status()
+                }       
+            }
+        }*/
+        stage('Build & Push Gem') {
+            when {
+                expression { env.BRANCH_NAME == 'master' }
+            }
+            steps {
+                sh """
+                   docker run ${dockerImg} /bin/bash -c "gem build ${gemspec}; ./push.sh"
+                   """
+            }
+            post {
+                always {
+                    github_notify_status()
+                }       
             }
         }
     }
     post {
         always {
             script {
+                general_docker.delete_image(dockerImg)
                 github_notify_status(stage_name: 'Pipeline complete')
             }
         }

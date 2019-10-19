@@ -1,7 +1,10 @@
 FROM ruby:1.9.3-p551
 ARG BUNDLER_VERSION=1.15.4
 
-RUN apt-get update -qq && apt-get install -qy awscli curl && apt-get clean
+RUN apt-get update -qq && \
+    apt-get install -qy curl jq python3 python3-dev python3-pip python3-yaml && \
+    pip3 install awscli && \
+    apt-get clean
 
 RUN useradd -c 'builder of ruby projs' -m -d /home/builder -s /bin/bash builder
 
