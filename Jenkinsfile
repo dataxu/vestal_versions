@@ -1,8 +1,8 @@
 @Library('sharedlib') _
 import src.dataxu.docker.general.*
 
-def gemname = 'auth0'
-def gemspec = 'auth0.gemspec'
+def gemname = 'vestal_versions'
+def gemspec = 'vestal_versions.gemspec'
 def region = 'us-east-1'
 
 def dockerImg = "${JOB_NAME}-builder".toLowerCase()
